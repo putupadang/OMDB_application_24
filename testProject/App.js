@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 10,
     elevation: 3,
-    minHeight: 295,
+    minHeight: 280,
   },
   moviePoster: {
     width: 120,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   movieTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
     textAlign: "center",
   },
