@@ -3,7 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
@@ -17,13 +17,13 @@ export default function App() {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedMovie, setSelectedMovie] = useState(null);
 
   /**
-   * Fetches movies from the OMDB API using the provided API key.
+   * Asynchronously fetches movies from the OMDB API based on the search term "star wars".
    *
-   * @return {Promise<void>} A promise that resolves when the movies have been fetched successfully.
-   * @throws {Error} If the API response is not "True".
+   * @return {Promise<void>} - A Promise that resolves when the movies are successfully fetched and set in the state.
+   *                          Rejects if there is an error in fetching the data.
    */
   const fetchMovies = async () => {
     const url = `https://www.omdbapi.com/?apikey=${API_KEY}&s=star wars`;
@@ -32,8 +32,8 @@ export default function App() {
       setMovies(data.Search);
       setLoading(false);
     } else {
-      setError(data);
-      throw new Error(data);
+      setError(data.Error);
+      setLoading(false);
     }
   };
 
@@ -41,9 +41,15 @@ export default function App() {
     fetchMovies();
   }, []);
 
+  /**
+   * Updates the selected movie state with the provided movie object.
+   *
+   * @param {Object} movie - The movie object to be selected.
+   * @return {void} This function does not return anything.
+   */
   const handlePress = (movie) => {
-    setSelectedItem(movie);
-    Alert.alert("Selected movie", movie.Title);
+    setSelectedMovie(movie);
+    // Alert.alert("Selected movie", movie.Title);
   };
 
   if (loading) {
@@ -62,48 +68,64 @@ export default function App() {
     );
   }
 
+  /**
+   * Renders a single item in the list as a touchable component with an image and title.
+   *
+   * @param {Object} item - The item to render.
+   * @return {JSX.Element} The rendered touchable component.
+   */
+  const renderItemComponent = ({ item }) => (
+    <TouchableOpacity onPress={() => handlePress(item)}>
+      <View style={styles.movieContainer}>
+        <Image source={{ uri: item.Poster }} style={styles.moviePoster} />
+        <Text style={styles.movieTitle}>{item.Title}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Film Searcher</Text>
-      <ScrollView horizontal style={styles.scrollView}>
-        {movies.map((movie, index) => (
-          <TouchableOpacity key={index} onPress={() => handlePress(movie)}>
-            <View style={styles.movieContainer}>
-              <Image
-                source={{ uri: movie.Poster }}
-                style={styles.moviePoster}
-              />
-              <Text style={styles.movieTitle}>{movie.Title}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-      <View>
-        <Text>selected movie</Text>
-      </View>
+      <FlatList
+        data={movies}
+        horizontal
+        keyExtractor={(item) => item.imdbID}
+        renderItem={({ item }) => renderItemComponent({ item })}
+        contentContainerStyle={styles.flatListContentContainer}
+      />
+      {selectedMovie && (
+        <View style={styles.selectedMovieContainer}>
+          <Text style={styles.selectedMovieTitle}>Selected Movie:</Text>
+          <Text style={styles.selectedMovieText}>{selectedMovie.Title}</Text>
+          <Text style={styles.selectedMovieText}>{selectedMovie.Year}</Text>
+          <Image
+            source={{ uri: selectedMovie.Poster }}
+            style={styles.selectedMoviePoster}
+          />
+        </View>
+      )}
       <StatusBar style="auto" />
     </View>
   );
 }
 
 /**
- * Fetches data from the specified URL using the provided HTTP method and optional parameters.
+ * Asynchronous function to fetch data from a specified URL with optional parameters.
  *
- * @param {string} action - The HTTP method to use for the request (e.g. "GET", "POST", etc.).
- * @param {string} url - The URL to send the request to.
+ * @param {string} action - The HTTP request method (GET, POST, PUT, DELETE, etc.).
+ * @param {string} url - The URL from which to fetch data.
  * @param {object} [params=null] - Optional parameters to include in the request body.
- * @return {Promise<object>} A promise that resolves to the parsed JSON response from the server.
- * @throws {Error} If there is an error during the fetch request.
+ * @return {Promise} A Promise that resolves to the fetched data.
  */
 const fetcher = async (action, url, params = null) => {
   try {
-    const res = await fetch(`${url}`, {
+    const res = await fetch(url, {
       method: action,
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: params ? params : null,
+      body: params ? JSON.stringify(params) : null,
     });
     const data = await res.json();
     return data;
@@ -118,6 +140,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
+    padding: 10,
   },
   loaderContainer: {
     flex: 1,
@@ -136,11 +159,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "bold",
+    color: "#fff",
     marginBottom: 20,
   },
-  scrollView: {
-    width: "100%",
-    backgroundColor: "red",
+  flatListContentContainer: {
+    paddingHorizontal: 10,
   },
   movieContainer: {
     width: 150,
@@ -151,6 +174,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 10,
     elevation: 3,
+    minHeight: 295,
   },
   moviePoster: {
     width: 120,
@@ -162,5 +186,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     textAlign: "center",
+  },
+  selectedMovieContainer: {
+    marginTop: 0,
+    alignItems: "center",
+  },
+  selectedMovieTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 10,
+  },
+  selectedMovieText: {
+    fontSize: 18,
+    color: "#fff",
+    marginBottom: 10,
+  },
+  selectedMoviePoster: {
+    width: 200,
+    height: 300,
+    borderRadius: 10,
   },
 });
